@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,6 +43,12 @@
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+int __io_putchar(int ch) // ch 1unit => port out
+{
+	HAL_UART_Transmit(&huart2, &ch, 1, 10);
+	return ch;
+}
+//int __io_getchar(void);
 
 /* USER CODE END PV */
 
@@ -56,6 +62,22 @@ static void MX_USART2_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+int mode = 0;
+int count = 0;
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	switch(GPIO_Pin)
+	{
+	case B1_Pin:				// B1 ISR
+		mode ++; 				// Interrupt : mode change
+		if(mode > 1) mode = 0;
+		break;
+	case B2_Pin:				// B2 ISR
+		printf("%d times pressed\r\n", count++);
+		break;
+	}
+
+}
 
 /* USER CODE END 0 */
 
@@ -65,7 +87,6 @@ static void MX_USART2_UART_Init(void);
   */
 int main(void)
 {
-
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -90,13 +111,26 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+  printf("\033[2J\n");		// 2J : clear screen
+  printf("\033[y;xH\n");	// y;xH : (x,y) move cursor
 
+
+  //github upload test
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  //int a = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);	// PC13 : B1
+	  if(mode == 1)
+	  {
+		  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, 1);	// LD2 on
+		  HAL_Delay(500);								// 500ms
+		  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, 0);	// LD2 off
+		  HAL_Delay(500);								// 500ms
+	  }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -215,6 +249,19 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : B2_Pin */
+  GPIO_InitStruct.Pin = B2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(B2_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
